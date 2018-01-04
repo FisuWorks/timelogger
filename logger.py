@@ -95,6 +95,8 @@ def log_entry(taskname, time):
 def task_exists(taskname):
     with open(SUMMARY_FILE, 'r') as f:
         for line in f:
+            if len(line.strip()) == 0:
+                continue
             if line.strip()[:line.index(TASK_TIME_SEPARATOR)] == taskname:
                 return True
 
