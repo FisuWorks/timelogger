@@ -2,3 +2,7 @@ Timelog
 - Add timestamps/dates to timelog entries
 - Add commands to list entries in timelog entries and totals (summary)
 
+Clarity
+- Add error message when time format doesn't match expected
+  (e.g. 3.777h instead of 3.78h, only 2 decimal places allowed)
+
