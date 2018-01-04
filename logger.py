@@ -7,7 +7,7 @@ TIMELOG_FILE = "data/timelog.dat" # File for all individual log entries
 
 def usage():
     u = """
-    python logger.py [command] [arguments]
+    Usage: python logger.py [command] [arguments]
 
     Default command is -s for saving a task time.
 
@@ -45,13 +45,16 @@ def format_time(minutes):
 
 
 def create_new_task(taskname):
-    if not all(x.isalpha() or x.isspace() for x in task):
-        return false, "Task name must consists only of alphabetic characters and spaces."
+    if not all(x.isalpha() or x.isspace() for x in taskname):
+        return False, "Task name must consists only of alphabetic characters and spaces."
     if task_exists(taskname):
-        return false, "Task " + taskname + " already exists!"
-    else:
-        with open(SUMMARY_FILE, 'a') as f:
-            f.write(format_task_line(taskname, 0))
+        return False, "Task '" + taskname + "' already exists!"
+    
+    with open(SUMMARY_FILE, 'a') as f:
+        task = construct_task(taskname, 0)
+        f.write(task_to_string(task) + '\n')
+
+    return True, ""
 
 
 def update_task_summary(taskname, minutes_to_add):
@@ -62,26 +65,29 @@ def update_task_summary(taskname, minutes_to_add):
     char_count = 0
     with open(SUMMARY_FILE, 'r+') as f:
         for line in f:
+
+            if len(line.strip()) > 0: # Ignore empty lines
+                task = task_from_string(line.strip())
+
+                if task['name'] == taskname:
+                    f.seek(char_count, 0)
+                    newtime = int(task['time']) + minutes_to_add
+                    pattern = re.compile(r"\d\d\d\d\d\d\d\d") # Ugly! Regex depends on constant value TIME_CHARACTERS == 8
+                    updated_line = re.sub(pattern, format_time(newtime), line)
+                    f.write(updated_line)
+                    return True
+
             char_count = char_count + len(line)
-
-            if len(line.strip()) == 0: # Ignore empty lines
-                continue
-            task = task_from_string(line.strip())
-
-            if task['name'] == taskname:
-                f.seek(char_count, 0)
-                newtime = task['time'] + minutes_to_add
-                pattern = re.compile(r"\d\d\d\d\d\d\d\d") # Ugly! Regex depends on constant value TIME_CHARACTERS == 8
-                updated_line = re.sub(pattern, format_time(newtime), line)
-                f.write(updated_line)
-                return True
 
     return False
 
 
 def log_entry(taskname, time):
+    """
+    Create an entry in timelog file.
+    """
     with open(TIMELOG_FILE, 'a') as f:
-        f.write(taskname + TASK_TIME_SEPARATOR + str(time))
+        f.write(taskname + TASK_TIME_SEPARATOR + str(time) + '\n')
 
 
 # File read
@@ -101,14 +107,19 @@ def parse_args():
     args = sys.argv[1:]
     argc = len(args)
     cmd = args[0]
+    success = True
+
     if cmd == "-s" and argc == 3:
-        parse_cmd_save()
+        parse_cmd_save(args)
     elif cmd[0] != "-" and argc == 2:
-        parse_cmd_save()
-    elif cmd[0] == "-n" and argc == 2:
-        create_new_task(cmd[1])
+        parse_cmd_save(args)
+    elif cmd == "-n" and argc == 2:
+        success, errortxt = create_new_task(args[1])
     else:
         usage()
+
+    if not success:
+        print(errortxt)
 
 
 def parse_cmd_save(args):
@@ -145,4 +156,8 @@ def minutes_to_hours_and_minutes(minutes): # TODO make a --list, -l command and 
     else:
         return str(hours) + "h" + str(minutes)
         
+
+### Main ###
+parse_args()
+############
 
