@@ -1,6 +1,8 @@
 import sys
 import string
 import re
+import shutil
+import os
 
 SUMMARY_FILE = "data/timesummary.dat" # File for counting time totals on each task
 TIMELOG_FILE = "data/timelog.dat" # File for all individual log entries
@@ -27,7 +29,7 @@ TASK_TIME_SEPARATOR = ":;"
 TIME_CHARACTERS = 8
 
 def construct_task(name, time=0):
-    return {'name': name, 'time': time}
+    return {'name': name, 'time': int(time)}
 
 def task_to_string(task):
     timestr = format_time(task['time'])
@@ -63,23 +65,34 @@ def update_task_summary(taskname, minutes_to_add):
     @return True on success, False if task was not found
     """
     char_count = 0
-    with open(SUMMARY_FILE, 'r+') as f:
-        for line in f:
+    with open(SUMMARY_FILE, 'r') as f:
+        lines = f.readlines()
 
-            if len(line.strip()) > 0: # Ignore empty lines
-                task = task_from_string(line.strip())
+    lines = [l.strip() for l in lines if len(l.strip()) > 0]
+    found_task = False
 
-                if task['name'] == taskname:
-                    f.seek(char_count, 0)
-                    newtime = int(task['time']) + minutes_to_add
-                    pattern = re.compile(r"\d\d\d\d\d\d\d\d") # Ugly! Regex depends on constant value TIME_CHARACTERS == 8
-                    updated_line = re.sub(pattern, format_time(newtime), line)
-                    f.write(updated_line)
-                    return True
+    for i in range(0, len(lines)):
+        line = lines[i]
+        task = task_from_string(line)
 
-            char_count = char_count + len(line)
+        if task['name'] == taskname:
+            task['time'] = task['time'] + minutes_to_add
+            lines[i] = task_to_string(task)
+            found_task = True
+            break
+    
+    if found_task:
+        shutil.copyfile(SUMMARY_FILE, SUMMARY_FILE+".bak")
+        os.remove(SUMMARY_FILE)
 
-    return False
+        with open(SUMMARY_FILE, 'w+') as f:
+            for line in lines:
+                f.write(line + '\n')
+
+        return True
+    else:
+        return False
+    
 
 
 def log_entry(taskname, time):
